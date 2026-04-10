@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ZAR Configurator | Mobile Optimized</title>
+    <!-- External scripts as per original code -->
+    <script src="v3d.js"></script>
+    <script src="bathroom.js"></script>
+    <style>
+        :root {
+            --accent: #6366f1;
+            --accent-hover: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-glass: rgba(15, 23, 42, 0.95);
+            --item-glass: rgba(255, 255, 255, 0.1);
+            --border-glass: rgba(255, 255, 255, 0.15);
+            --safe-bottom: env(safe-area-inset-bottom);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body, html {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            background-color: #0f172a;
+            position: fixed;
+        }
+
+        #v3d-container {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+        }
+
+        #ui-wrapper {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: auto;
+            padding: 15px;
+            width: 100%;
+        }
+
+        @media (min-width: 768px) {
+            .top-bar { padding: 30px; }
+        }
+
+        .price-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px);
+            padding: 10px 15px;
+            border-radius: 16px;
+            border: 1px solid var(--border-glass);
+            color: white;
+        }
+
+        .price-label { font-size: 0.6rem; opacity: 0.6; letter-spacing: 0.5px; text-transform: uppercase; }
+        .price-value { font-size: 1.1rem; font-weight: 800; display: block; }
+
+        .btn-header {
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glass);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 16px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .btn-checkout-trigger {
+            background: var(--success);
+            border: none;
+            padding: 10px 20px;
+        }
+
+        .panel {
+            position: fixed;
+            background: var(--bg-glass);
+            backdrop-filter: blur(30px);
+            border: 1px solid var(--border-glass);
+            color: white;
+            pointer-events: auto;
+            z-index: 100;
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .mobile-panel-header {
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-glass);
+        }
+
+        .drag-handle {
+            width: 40px;
+            height: 4px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+            margin: 0 auto 15px auto;
+        }
+
+        @media (max-width: 767px) {
+            .panel {
+                left: 0;
+                right: 0;
+                bottom: 0;
+                width: 100%;
+                max-height: 85vh;
+                border-radius: 24px 24px 0 0;
+                transform: translateY(105%);
+                padding: 15px 20px calc(25px + var(--safe-bottom)) 20px;
+                box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+            }
+            .panel.open { transform: translateY(0); }
+            .mobile-panel-header { display: flex; }
+            .drag-handle { display: block; }
+            .desktop-close { display: none; }
+            .btn-panel-cancel-mobile {
+                background: rgba(239, 68, 68, 0.15);
+                color: var(--danger);
+                border: none;
+                padding: 6px 14px;
+                border-radius: 10px;
+                font-weight: 700;
+                font-size: 0.8rem;
+                cursor: pointer;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .panel-right {
+                top: 50%;
+                right: 30px;
+                width: 380px;
+                max-height: 80vh;
+                border-radius: 24px;
+                transform: translateY(-50%) translateX(450px);
+                padding: 30px;
+                opacity: 0;
+            }
+            .panel-left {
+                top: 120px;
+                left: 30px;
+                width: 340px;
+                max-height: 70vh;
+                border-radius: 24px;
+                transform: translateX(-400px);
+                padding: 25px;
+                opacity: 0;
+            }
+            .panel.open { transform: translateY(-50%) translateX(0); opacity: 1; }
+            .panel-left.open { transform: translateX(0); opacity: 1; }
+            .drag-handle { display: none; }
+            .desktop-close { position: absolute; top: 15px; right: 15px; font-size: 20px; cursor: pointer; opacity: 0.6; padding: 10px; }
+        }
+
+        .menu-label { font-size: 0.7rem; font-weight: 800; color: var(--accent); text-transform: uppercase; margin-bottom: 12px; display: block; }
+        
+        .snap-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .snap-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-glass);
+            color: white; padding: 12px; border-radius: 12px; cursor: pointer; font-size: 0.75rem;
+        }
+        .snap-btn.active { background: var(--accent); border-color: var(--accent-hover); }
+
+        .finish-category-btn {
+            width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass);
+            border-radius: 16px; padding: 15px; color: white; display: flex; justify-content: space-between;
+            align-items: center; cursor: pointer; margin-bottom: 10px;
+        }
+
+        .scaling-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 16px;
+            border: 1px solid var(--border-glass);
+        }
+        .scale-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .scale-row:last-child { margin-bottom: 0; }
+        .scale-label { font-size: 0.8rem; font-weight: 600; opacity: 0.8; }
+        
+        .scale-controls {
+            display: flex;
+            align-items: center;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-glass);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .step-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            width: 34px;
+            height: 38px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .step-btn:hover { background: rgba(255,255,255,0.2); }
+        .step-btn:active { background: var(--accent); }
+
+        .scale-input {
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 8px 5px;
+            width: 70px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .item-gallery {
+            position: fixed; left: 0; right: 0; bottom: 0;
+            background: var(--bg-glass); backdrop-filter: blur(25px);
+            border-top: 1px solid var(--border-glass); z-index: 50;
+            transform: translateY(100%); transition: transform 0.4s;
+            pointer-events: auto; padding: 15px 15px calc(90px + var(--safe-bottom));
+            max-height: 60vh; overflow-y: auto;
+        }
+        .item-gallery.visible { transform: translateY(0); }
+
+        @media (min-width: 1024px) {
+            .item-gallery {
+                left: 50%; right: auto; bottom: 100px;
+                transform: translateX(-50%) translateY(20px);
+                width: 800px; border-radius: 24px; border: 1px solid var(--border-glass);
+                padding: 20px; opacity: 0; display: none;
+            }
+            .item-gallery.visible { display: block; opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .product-card {
+            background: var(--item-glass); border-radius: 16px; padding: 15px;
+            text-align: center; cursor: pointer; border: 1px solid transparent;
+            transition: background 0.2s;
+        }
+        .product-card:active { background: rgba(255,255,255,0.2); }
+        .product-card img { width: 50px; height: 50px; margin-bottom: 8px; filter: brightness(0) invert(1); }
+
+        .bottom-nav-container {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: var(--bg-glass); backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border-glass);
+            padding: 12px 12px calc(12px + var(--safe-bottom));
+            pointer-events: auto; display: flex; justify-content: center; z-index: 200;
+        }
+        .bottom-nav { display: flex; gap: 10px; width: 100%; max-width: 600px; }
+        .nav-pill {
+            flex: 1; padding: 12px; border-radius: 14px; color: white;
+            text-align: center; font-weight: 600; border: 1px solid var(--border-glass);
+            background: rgba(255,255,255,0.05); cursor: pointer; font-size: 0.85rem;
+        }
+        .nav-pill.active { background: var(--accent); border-color: var(--accent-hover); }
+
+        .overlay {
+            position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px); z-index: 300; display: none;
+            align-items: center; justify-content: center; padding: 20px; pointer-events: auto;
+        }
+        .overlay.open { display: flex; }
+
+        .btn-main {
+            width: 100%; padding: 16px; border-radius: 14px; border: none;
+            font-weight: 700; cursor: pointer; font-size: 1rem;
+        }
+
+        .cart-item {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-glass);
+            border-radius: 16px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .cart-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .cart-item-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 5px;
+        }
+        .action-btn {
+            flex: 1;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid var(--border-glass);
+            background: rgba(255,255,255,0.1);
+            color: white;
+            cursor: pointer;
+            font-size: 0.7rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+        .btn-duplicate { border-color: var(--accent); color: var(--accent); }
+        .btn-remove { border-color: var(--danger); color: var(--danger); }
+    </style>
+</head>
+<body>
+
+    <div id="v3d-container"></div>
+
+    <div id="ui-wrapper">
+        <div class="top-bar">
+            <div class="price-card">
+                <span class="price-label">EST. PRICE</span>
+                <span class="price-value" id="price_display">R0.00</span>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button id="btn_open_cart" class="btn-header" onclick="toggleChecklist()">Cart</button>
+                <button id="btn_open_pay" class="btn-header btn-checkout-trigger" onclick="openCheckout()">Pay</button>
+            </div>
+        </div>
+
+        <!-- Edit Panel -->
+        <div id="edit-panel" class="panel panel-right">
+            <div class="drag-handle" id="edit_drag_handle"></div>
+            
+            <div class="mobile-panel-header">
+                <span style="font-weight: 800; font-size: 0.9rem;">CONFIGURATOR</span>
+                <button id="btn_edit_close_mobile" class="btn-panel-cancel-mobile" onclick="closeEditMenu()">CLOSE</button>
+            </div>
+
+            <span id="btn_edit_close_desktop" class="desktop-close" onclick="closeEditMenu()">✕</span>
+            
+            <h3 id="edit_title">Item Name</h3>
+            <p id="edit_category" style="font-size: 0.75rem; opacity: 0.5; margin-bottom: 20px;">Category</p>
+
+            <span class="menu-label">Placement</span>
+            <div class="snap-grid">
+                <button class="snap-btn" id="snap_north" onclick="setSnap('North')">North</button>
+                <button class="snap-btn" id="snap_south" onclick="setSnap('South')">South</button>
+                <button class="snap-btn" id="snap_west" onclick="setSnap('West')">West</button>
+                <button class="snap-btn" id="snap_east" onclick="setSnap('East')">East</button>
+            </div>
+
+            <span class="menu-label">Dimensions (mm)</span>
+            <div class="scaling-section">
+                <div class="scale-row">
+                    <span class="scale-label">Width</span>
+                    <div class="scale-controls">
+                        <button id="btn_dim_width_minus" class="step-btn" onclick="adjustDimension('width', -50)">-</button>
+                        <input type="number" class="scale-input" id="inp_width" oninput="handleDimensionInput('width', this.value)">
+                        <button id="btn_dim_width_plus" class="step-btn" onclick="adjustDimension('width', 50)">+</button>
+                    </div>
+                </div>
+                <div class="scale-row">
+                    <span class="scale-label">Depth</span>
+                    <div class="scale-controls">
+                        <button id="btn_dim_depth_minus" class="step-btn" onclick="adjustDimension('depth', -50)">-</button>
+                        <input type="number" class="scale-input" id="inp_depth" oninput="handleDimensionInput('depth', this.value)">
+                        <button id="btn_dim_depth_plus" class="step-btn" onclick="adjustDimension('depth', 50)">+</button>
+                    </div>
+                </div>
+                <div class="scale-row">
+                    <span class="scale-label">Height</span>
+                    <div class="scale-controls">
+                        <button id="btn_dim_height_minus" class="step-btn" onclick="adjustDimension('height', -50)">-</button>
+                        <input type="number" class="scale-input" id="inp_height" oninput="handleDimensionInput('height', this.value)">
+                        <button id="btn_dim_height_plus" class="step-btn" onclick="adjustDimension('height', 50)">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="dynamic-options"></div>
+
+            <button id="btn_apply_add" class="btn-main" style="background:var(--success); color:white; margin-top:15px;" onclick="applyAndAdd()">ADD TO SCENE</button>
+            <button id="btn_edit_cancel" class="btn-main" style="background:transparent; color:white; border:1px solid var(--border-glass); margin-top:10px;" onclick="closeEditMenu()">CANCEL</button>
+        </div>
+
+        <!-- Checklist/Cart Panel -->
+        <div id="checklist-panel" class="panel panel-left">
+            <div class="drag-handle" id="cart_drag_handle"></div>
+            <div class="mobile-panel-header">
+                <span style="font-weight: 800; font-size: 0.9rem;">YOUR CART</span>
+                <button id="btn_cart_close_mobile" class="btn-panel-cancel-mobile" onclick="toggleChecklist()">CLOSE</button>
+            </div>
+            <span id="btn_cart_close_desktop" class="desktop-close" onclick="toggleChecklist()">✕</span>
+            <span class="menu-label">Active Scene</span>
+            
+            <div id="checklist-items" style="margin-bottom: 20px; max-height: 400px; overflow-y: auto;">
+                <!-- Items dynamically updated or toggled based on scene contents -->
+
+                <!-- basins -->
+                <div class="cart-item" id="cart_item_evox_loretta_freestanding_basin_round">
+                    <div class="cart-item-header">
+                        <div><b>Evox Loretta Freestanding Basin Round</b><br><small id="price_evox_loretta_freestanding_basin_round">R0.00</small></div>
+                    </div>
+                    <div class="cart-item-actions">
+                        <button id="btn_copy_evox_loretta_freestanding_basin_round" class="action-btn btn-duplicate" onclick="duplicateItem('Evox Loretta Freestanding Basin Round')">COPY</button>
+                        <button id="btn_remove_evox_loretta_freestanding_basin_round" class="action-btn btn-remove" onclick="removeItem('Evox Loretta Freestanding Basin Round')">REMOVE</button>
+                    </div>
+                </div>
+
+                <div class="cart-item" id="cart_item_evox_martina_freestanding_basin_square">
+                    <div class="cart-item-header">
+                        <div>Evox Martina Freestanding Basin Square<b></b><br><small id="price_evox_martina_freestanding_basin_square">R0.00</small></div>
+                    </div>
+                    <div class="cart-item-actions">
+                        <button id="btn_copy_evox_martina_freestanding_basin_square" class="action-btn btn-duplicate" onclick="duplicateItem('Evox Martina Freestanding Basin Square')">COPY</button>
+                        <button id="btn_remove_evox_martina_freestanding_basin_square" class="action-btn btn-remove" onclick="removeItem('Evox Martina Freestanding Basin Square')">REMOVE</button>
+                    </div>
+                </div>
+
+                <div class="cart-item" id="cart_item_stone_vessel">
+                    <div class="cart-item-header">
+                        <div><b>Stone Vessel</b><br><small id="price_stone_vessel">R0.00</small></div>
+                    </div>
+                    <div class="cart-item-actions">
+                        <button id="btn_copy_stone_vessel" class="action-btn btn-duplicate" onclick="duplicateItem('Stone Vessel')">COPY</button>
+                        <button id="btn_remove_stone_vessel" class="action-btn btn-remove" onclick="removeItem('Stone Vessel')">REMOVE</button>
+                    </div>
+                </div>
+
+                <!-- toilets -->
+
+                <div class="cart-item" id="cart_item_betta_marina">
+                    <div class="cart-item-header">
+                        <div><b>Betta Marina</b><br><small id="price_betta_marina">R0.00</small></div>
+                    </div>
+                    <div class="cart-item-actions">
+                        <button id="btn_copy_betta_marina" class="action-btn btn-duplicate" onclick="duplicateItem('Betta Marina')">COPY</button>
+                        <button id="btn_remove_betta_marina" class="action-btn btn-remove" onclick="removeItem('Betta Marina')">REMOVE</button>
+                    </div>
+                </div>
+
+                <div class="cart-item" id="cart_item_laufen_wall_hung">
+                    <div class="cart-item-header">
+                        <div><b>Laufen Wall Hung </b><br><small id="price_laufen_wall_hung">R0.00</small></div>
+                    </div>
+                    <div class="cart-item-actions">
+                        <button id="btn_copy_laufen_wall_hung" class="action-btn btn-duplicate" onclick="duplicateItem('Laufen Wall Hung')">COPY</button>
+                        <button id="btn_remove_laufen_wall_hung" class="action-btn btn-remove" onclick="removeItem('Laufen Wall Hung')">REMOVE</button>
+                    </div>
+                </div>
+
+                <div class="cart-item" id="cart_item_laufen_floorstanding">
+                    <div class="cart-item-header">
+                        <div><b>Laufen Floorstanding</b><br><small id="price_laufen_floorstanding">R0.00</small></div>
+                    </div>
+                    <div class="cart-item-actions">
+                        <button id="btn_copy_laufen_floorstanding" class="action-btn btn-duplicate" onclick="duplicateItem('Laufen Floorstanding')">COPY</button>
+                        <button id="btn_remove_laufen_floorstanding" class="action-btn btn-remove" onclick="removeItem('Laufen Floorstanding')">REMOVE</button>
+                    </div>
+                </div>
+
+                <!-- baths-->
+
+                <div class="cart-item" id="cart_item_betta_baths_trilogy">
+                    <div class="cart-item-header">
+                        <div><b>Betta Baths Trilogy</b><br><small id="price_betta_baths_trilogy">R0.00</small></div>
+                    </div>
+                    <div class="cart-item-actions">
+                        <button id="btn_copy_betta_baths_trilogy" class="action-btn btn-duplicate" onclick="duplicateItem('Betta Baths Trilogy')">COPY</button>
+                        <button id="btn_remove_betta_baths_trilogy" class="action-btn btn-remove" onclick="removeItem('Betta Baths Trilogy')">REMOVE</button>
+                    </div>
+                </div>
+
+
+                <div class="cart-item" id="cart_item_divina_luce">
+                    <div class="cart-item-header">
+                        <div><b>Divina Luce </b><br><small id="price_divina_luce">R0.00</small></div>
+                    </div>
+                    <div class="cart-item-actions">
+                        <button id="btn_copy_divina_luce" class="action-btn btn-duplicate" onclick="duplicateItem('Divina Luce')">COPY</button>
+                        <button id="btn_remove_divina_luce" class="action-btn btn-remove" onclick="removeItem('Divina Luce')">REMOVE</button>
+                    </div>
+                </div>
+
+
+                <div class="cart-item" id="cart_item_serenita_oval">
+                    <div class="cart-item-header">
+                        <div><b>Serenita Oval</b><br><small id="price_serenita_oval">R0.00</small></div>
+                    </div>
+                    <div class="cart-item-actions">
+                        <button id="btn_copy_serenita_oval" class="action-btn btn-duplicate" onclick="duplicateItem('Serenita Oval')">COPY</button>
+                        <button id="btn_remove_serenita_oval" class="action-btn btn-remove" onclick="removeItem('Serenita Oval')">REMOVE</button>
+                    </div>
+                </div>
+
+                <div class="cart-item" id="cart_item_victoria_albert_lussari">
+                    <div class="cart-item-header">
+                        <div><b>Victoria & Albert Lussari</b><br><small id="price_victoria_albert_lussari">R0.00</small></div>
+                    </div>
+                    <div class="cart-item-actions">
+                        <button id="btn_copy_victoria_albert_lussari" class="action-btn btn-duplicate" onclick="duplicateItem('Victoria Albert Lussari')">COPY</button>
+                        <button id="btn_remove_victoria_albert_lussari" class="action-btn btn-remove" onclick="removeItem('Victoria Albert Lussari')">REMOVE</button>
+                    </div>
+                </div>
+
+
+
+
+                <!-- cabinets -->
+
+                <div class="cart-item" id="cart_item_granada">
+                    <div class="cart-item-header">
+                        <div><b>Granada </b><br><small id="price_granada">R0.00</small></div>
+                    </div>
+                    <div class="cart-item-actions">
+                        <button id="btn_copy_granada" class="action-btn btn-duplicate" onclick="duplicateItem('Granada')">COPY</button>
+                        <button id="btn_remove_granada" class="action-btn btn-remove" onclick="removeItem('Granada')">REMOVE</button>
+                    </div>
+                </div>
+
+                <div class="cart-item" id="cart_item_maka">
+                    <div class="cart-item-header">
+                        <div><b>Maka</b><br><small id="price_maka">R0.00</small></div>
+                    </div>
+                    <div class="cart-item-actions">
+                        <button id="btn_copy_maka" class="action-btn btn-duplicate" onclick="duplicateItem('Maka')">COPY</button>
+                        <button id="btn_remove_maka" class="action-btn btn-remove" onclick="removeItem('Maka')">REMOVE</button>
+                    </div>
+                </div>
+
+                <div class="cart-item" id="cart_item_nimbus">
+                    <div class="cart-item-header">
+                        <div><b>Nimbus</b><br><small id="price_nimbus">R0.00</small></div>
+                    </div>
+                    <div class="cart-item-actions">
+                        <button id="btn_copy_nimbus" class="action-btn btn-duplicate" onclick="duplicateItem('Nimbus')">COPY</button>
+                        <button id="btn_remove_nimbus" class="action-btn btn-remove" onclick="removeItem('Nimbus')">REMOVE</button>
+                    </div>
+                </div>
+
+                <div class="cart-item" id="cart_item_vitale">
+                    <div class="cart-item-header">
+                        <div><b>Vitale</b><br><small id="price_vitale">R0.00</small></div>
+                    </div>
+                    <div class="cart-item-actions">
+                        <button id="btn_copy_vitale" class="action-btn btn-duplicate" onclick="duplicateItem('Vitale')">COPY</button>
+                        <button id="btn_remove_vitale" class="action-btn btn-remove" onclick="removeItem('Vitale')">REMOVE</button>
+                    </div>
+                </div>
+
+
+
+            </div>
+
+            <button id="btn_cart_back" class="btn-main" style="background:var(--accent); color:white;" onclick="toggleChecklist()">BACK TO DESIGN</button>
+        </div>
+
+        <!-- Galleries -->
+
+        <div id="gallery_basins" class="item-gallery">
+            <div class="drag-handle" id="basin_gallery_drag_handle"></div>
+            <h4 style="color:white; margin-bottom:15px;">Choose a Basin</h4>
+            <div class="gallery-grid">
+
+                <div class="product-card" id="card_evox_loretta_freestanding_basin_round" onclick="openCustomizeMenu(this, 'Basin')" data-price="1200" data-name="Evox Loretta Freestanding Basin Round">
+                    <img id="img_basin_minimalist" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.5'%3E%3Cpath d='M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9Z'/%3E%3C/svg%3E">
+                    <h5>Evox Loretta Freestanding Basin Round</h5>
+                    <span style="font-size:0.75rem; opacity:0.6">R1,200</span>
+                </div>
+
+                <div class="product-card" id="card_evox_martina_freestanding_basin_square" onclick="openCustomizeMenu(this, 'Basin')" data-price="2400" data-name="Evox Martina Freestanding Basin Square">
+                    <img id="img_basin_northern" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.5'%3E%3Cpath d='M3 9h18v10a2 2 0 01-2 2H5a2 2 0 01-2-2V9z'/%3E%3C/svg%3E">
+                    <h5>Evox Martina Freestanding Basin Square</h5>
+                    <span style="font-size:0.75rem; opacity:0.6">R2,400</span>
+                </div>
+
+                <div class="product-card" id="card_basin_stone" onclick="openCustomizeMenu(this, 'Basin')" data-price="3800" data-name="Stone Vessel">
+                    <img id="img_basin_stone" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.5'%3E%3Cpath d='M12 21c4.97 0 9-1.79 9-4s-4.03-4-9-4-9 1.79-9 4 4.03 4 9 4zM12 13V3'/%3E%3Ccircle cx='12' cy='3' r='1'/%3E%3C/svg%3E">
+                    <h5>Stone Vessel</h5>
+                    <span style="font-size:0.75rem; opacity:0.6">R3,800</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="gallery_toilets" class="item-gallery">
+            <div class="drag-handle" id="toilet_gallery_drag_handle"></div>
+            <h4 style="color:white; margin-bottom:15px;">Choose a Toilet</h4>
+            <div class="gallery-grid">
+                
+                <div class="product-card" id="card_betta_marina" onclick="openCustomizeMenu(this, 'Toilet')" data-price="8500" data-name="Betta Marina">
+                    <img id="img_toilet_smart" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.5'%3E%3Cpath d='M9 2h6v6H9z'/%3E%3C/svg%3E">
+                    <h5>Betta Marina</h5>
+                    <span style="font-size:0.75rem; opacity:0.6">R8,500</span>
+                </div>
+
+                <div class="product-card" id="card_laufen_wall_hung" onclick="openCustomizeMenu(this, 'Toilet')" data-price="8500" data-name="Laufen Wall Hung">
+                    <img id="img_toilet_smart" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.5'%3E%3Cpath d='M9 2h6v6H9z'/%3E%3C/svg%3E">
+                    <h5>Laufen Wall Hung</h5>
+                    <span style="font-size:0.75rem; opacity:0.6">R8,500</span>
+                </div>
+
+                <div class="product-card" id="card_laufen_floorstanding" onclick="openCustomizeMenu(this, 'Toilet')" data-price="8500" data-name="Laufen Floorstanding">
+                    <img id="img_toilet_smart" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.5'%3E%3Cpath d='M9 2h6v6H9z'/%3E%3C/svg%3E">
+                    <h5>Laufen Floorstanding</h5>
+                    <span style="font-size:0.75rem; opacity:0.6">R8,500</span>
+                </div>
+
+            </div>
+        </div>
+
+        <div id="gallery_baths" class="item-gallery">
+            <div class="drag-handle" id="bath_gallery_drag_handle"></div>
+            <h4 style="color:white; margin-bottom:15px;">Choose a Bath</h4>
+            <div class="gallery-grid">
+
+                <div class="product-card" id="card_betta_baths_trilogy" onclick="openCustomizeMenu(this, 'Bath')" data-price="15500" data-name="Betta Baths Trilogy">
+                    <img id="img_bath_elegance" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.5'%3E%3Cpath d='M2 12c0-3 2-5 5-5h10c3 0 5 2 5 5v2a4 4 0 01-4 4H6a4 4 0 01-4-4v-2z'/%3E%3C/svg%3E">
+                    <h5>Betta Baths Trilogy</h5>
+                    <span style="font-size:0.75rem; opacity:0.6">R15,500</span>
+                </div>
+
+                <div class="product-card" id="card_divina_luce" onclick="openCustomizeMenu(this, 'Bath')" data-price="22000" data-name="Divina Luce">
+                    <img id="img_bath_zenith" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.5'%3E%3Cellipse cx='12' cy='13' rx='10' ry='6'/%3E%3C/svg%3E">
+                    <h5>Divina Luce</h5>
+                    <span style="font-size:0.75rem; opacity:0.6">R22,000</span>
+                </div>
+
+                <div class="product-card" id="card_serenita_oval" onclick="openCustomizeMenu(this, 'Bath')" data-price="22000" data-name="Serenita Oval">
+                    <img id="img_bath_zenith" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.5'%3E%3Cellipse cx='12' cy='13' rx='10' ry='6'/%3E%3C/svg%3E">
+                    <h5>Serenita oval</h5>
+                    <span style="font-size:0.75rem; opacity:0.6">R22,000</span>
+                </div>
+
+                <div class="product-card" id="card_victoria_albert_lussari" onclick="openCustomizeMenu(this, 'Bath')" data-price="22000" data-name="Victoria Albert Lussari">
+                    <img id="img_bath_zenith" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.5'%3E%3Cellipse cx='12' cy='13' rx='10' ry='6'/%3E%3C/svg%3E">
+                    <h5>Victoria & Albert Lussari</h5>
+                    <span style="font-size:0.75rem; opacity:0.6">R22,000</span>
+                </div>
+
+
+            </div>
+        </div>
+
+        <div id="gallery_cabinets" class="item-gallery">
+            <div class="drag-handle" id="_gallery_drag_handle"></div>
+            <h4 style="color:white; margin-bottom:15px;">Choose a Cabinet</h4>
+            <div class="gallery-grid">
+
+                <div class="product-card" id="card_cabinet_granada" onclick="openCustomizeMenu(this, 'Cabinet')" data-price="15500" data-name="Granada">
+                    <img id="img_bath_elegance" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.5'%3E%3Cpath d='M2 12c0-3 2-5 5-5h10c3 0 5 2 5 5v2a4 4 0 01-4 4H6a4 4 0 01-4-4v-2z'/%3E%3C/svg%3E">
+                    <h5>Granada</h5>
+                    <span style="font-size:0.75rem; opacity:0.6">R15,500</span>
+                </div>
+
+                <div class="product-card" id="card_cabinet_maka" onclick="openCustomizeMenu(this, 'Cabinet')" data-price="15500" data-name="Maka">
+                    <img id="img_bath_elegance" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.5'%3E%3Cpath d='M2 12c0-3 2-5 5-5h10c3 0 5 2 5 5v2a4 4 0 01-4 4H6a4 4 0 01-4-4v-2z'/%3E%3C/svg%3E">
+                    <h5>Maka</h5>
+                    <span style="font-size:0.75rem; opacity:0.6">R15,500</span>
+                </div>
+
+                <div class="product-card" id="card_cabinet_nimbus" onclick="openCustomizeMenu(this, 'Cabinet')" data-price="15500" data-name="Nimbus">
+                    <img id="img_bath_elegance" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.5'%3E%3Cpath d='M2 12c0-3 2-5 5-5h10c3 0 5 2 5 5v2a4 4 0 01-4 4H6a4 4 0 01-4-4v-2z'/%3E%3C/svg%3E">
+                    <h5>Nimbus</h5>
+                    <span style="font-size:0.75rem; opacity:0.6">R15,500</span>
+                </div>
+
+                <div class="product-card" id="card_cabinet_vitale" onclick="openCustomizeMenu(this, 'Cabinet')" data-price="15500" data-name="Vitale">
+                    <img id="img_bath_elegance" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.5'%3E%3Cpath d='M2 12c0-3 2-5 5-5h10c3 0 5 2 5 5v2a4 4 0 01-4 4H6a4 4 0 01-4-4v-2z'/%3E%3C/svg%3E">
+                    <h5>Vitale</h5>
+                    <span style="font-size:0.75rem; opacity:0.6">R15,500</span>
+                </div>
+
+
+
+            </div>
+        </div>
+
+        <!-- Overlays -->
+        <div id="checkout-overlay" class="overlay">
+            <div style="background:var(--bg-glass); border:1px solid var(--border-glass); padding:30px; border-radius:24px; width:100%; max-width:400px; text-align:center; color:white;">
+                <h2 id="checkout_header">Order Summary</h2>
+                <div style="font-size:2.5rem; font-weight:800; margin:20px 0;" id="checkout_total">R0.00</div>
+                <button id="btn_final_pay" class="btn-main" style="background:var(--success); color:white;" onclick="handlePay()">PAY NOW</button>
+                <button id="btn_checkout_back" class="btn-main" style="background:transparent; color:white; margin-top:10px;" onclick="closeCheckout()">BACK</button>
+            </div>
+        </div>
+
+        <div id="finish-overlay" class="overlay">
+            <div style="background:var(--bg-glass); border:1px solid var(--border-glass); padding:25px; border-radius:24px; width:100%; max-width:600px; max-height:80vh; overflow-y:auto;">
+                <h3 id="finish_title" style="color:white; margin-bottom:20px;">Select Finish</h3>
+                <div id="finish_grid" class="gallery-grid"></div>
+                <button id="btn_finish_cancel" class="btn-main" style="margin-top:20px; background:rgba(255,255,255,0.1); color:white;" onclick="closeFinishOverlay()">CANCEL</button>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav-container">
+            <nav class="bottom-nav" id="main_bottom_nav">
+                 <div class="nav-pill" id="pill_cabinets" onclick="toggleGallery('gallery_cabinets')">Cabinets</div>
+                <div class="nav-pill" id="pill_basins" onclick="toggleGallery('gallery_basins')">Basins</div>
+                <div class="nav-pill" id="pill_toilets" onclick="toggleGallery('gallery_toilets')">Toilets</div>
+                <div class="nav-pill" id="pill_baths" onclick="toggleGallery('gallery_baths')">Baths</div>
+            </nav>
+        </div>
+    </div>
+
+    <script>
+        // State Management
+        let selectedItems = [];
+        let currentItemContext = null;
+        let currentSelections = {};
+        let currentSnap = 'North';
+        let currentTotalPrice = 0;
+        
+        let defaultDimensions = { width: 600, depth: 450, height: 850 };
+        let currentDimensions = { width: 600, depth: 450, height: 850 };
+
+        const FINISH_DATA = {
+            'Evox Loretta Freestanding Basin Round': [{ name: 'Matte White', color: '#f8f8f8', extra: 0 }, { name: 'Matte Black', color: '#2a2a2a', extra: 300 }],
+            'Evox Martina Freestanding Basin Square': [{ name: 'Stone', color: '#555555', extra: 0 }, { name: 'Marble', color: '#e0e0e0', extra: 650 }],
+            'Stone Finish': [{ name: 'Natural Granite', color: '#444444', extra: 0 }, { name: 'Sandstone', color: '#d2b48c', extra: 400 }, { name: 'Obsidian', color: '#050505', extra: 1200 }],
+            'Tap Style': [{ name: 'Chrome', color: '#cccccc', extra: 0 }, { name: 'Gold', color: '#ffd700', extra: 800 }, { name: 'Matt Black', color: '#111111', extra: 450 }],
+            'Toilet Finish': [{ name: 'Gloss', color: '#ffffff', extra: 0 }, { name: 'Satin', color: '#a0a0a0', extra: 850 }],
+            'Bath Material': [{ name: 'Acrylic', color: '#ffffff', extra: 0 }, { name: 'Stone Resin', color: '#e8e8e8', extra: 4500 }, { name: 'Copper', color: '#b87333', extra: 12000 }],
+            'Jet System': [{ name: 'Standard', color: '#f0f0f0', extra: 0 }, { name: 'Air Jets', color: '#add8e6', extra: 3200 }, { name: 'Hydro Therapy', color: '#4682b4', extra: 5800 }]
+        };
+
+        // UI Helpers
+        function toggleGallery(id) {
+            const gallery = document.getElementById(id);
+            const pillId = id.replace('gallery_', 'pill_');
+            const isVisible = gallery.classList.contains('visible');
+            
+            document.querySelectorAll('.item-gallery').forEach(g => g.classList.remove('visible'));
+            document.querySelectorAll('.nav-pill').forEach(p => p.classList.remove('active'));
+            
+            if (!isVisible) {
+                gallery.classList.add('visible');
+                document.getElementById(pillId).classList.add('active');
+            }
+        }
+
+        function toggleChecklist() {
+            const panel = document.getElementById('checklist-panel');
+            panel.classList.toggle('open');
+            updateCartVisibility();
+        }
+
+        function closeEditMenu() {
+            document.getElementById('edit-panel').classList.remove('open');
+        }
+
+        function adjustDimension(type, amount) {
+            const input = document.getElementById('inp_' + type);
+            let val = parseInt(input.value) || currentDimensions[type];
+            val += amount;
+            if (val < 10) val = 10;
+            input.value = val;
+            handleDimensionInput(type, val);
+        }
+
+        function handleDimensionInput(type, value) {
+            let num = parseFloat(value);
+            if (!isNaN(num)) {
+                currentDimensions[type] = Math.max(10, num);
+            }
+        }
+
+        function setSnap(side) {
+            currentSnap = side;
+            document.querySelectorAll('.snap-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('snap_' + side.toLowerCase()).classList.add('active');
+        }
+
+        // Configuration Logic
+        function openCustomizeMenu(card, cat) {
+            const itemName = card.getAttribute('data-name');
+            currentItemContext = { 
+                name: itemName, 
+                basePrice: parseInt(card.getAttribute('data-price')), 
+                cat: cat 
+            };
+            
+            currentSelections = {};
+            setSnap('North');
+            
+            // Set defaults based on item
+            if (itemName === 'Evox Loretta Freestanding Basin Round') {
+                defaultDimensions = { width: 500, depth: 400, height: 120 };
+                currentSelections['Evox Loretta Freestanding Basin Roundh'] = FINISH_DATA['Evox Loretta Freestanding Basin Round'][0].name;
+                currentSelections['Tap Style'] = 'Chrome';
+            } else if (itemName === 'Evox Martina Freestanding Basin Square') {
+                defaultDimensions = { width: 650, depth: 480, height: 180 };
+                currentSelections['Evox Martina Freestanding Basin Square'] = FINISH_DATA['Evox Martina Freestanding Basin Square'][0].name;
+            } else if (itemName === 'Stone Vessel') {
+                defaultDimensions = { width: 450, depth: 450, height: 400 };
+                currentSelections['Stone Finish'] = FINISH_DATA['Stone Finish'][0].name;
+            } else if (cat === 'Toilet') {
+                defaultDimensions = { width: 400, depth: 600, height: 450 };
+                currentSelections['Toilet Finish'] = 'Gloss';
+            } else if (cat === 'Bath') {
+                defaultDimensions = { width: 1700, depth: 750, height: 550 };
+                currentSelections['Bath Material'] = 'Acrylic';
+                currentSelections['Jet System'] = 'Standard';
+            }  else if (cat === 'Cabinet') {
+                defaultDimensions = { width: 1700, depth: 750, height: 550 };
+                currentSelections['Bath Material'] = 'Acrylic';
+                currentSelections['Jet System'] = 'Standard';
+            }  
+
+            currentDimensions = { ...defaultDimensions };
+            
+            // Update UI fields
+            document.getElementById('edit_title').innerText = itemName;
+            document.getElementById('edit_category').innerText = cat;
+            document.getElementById('inp_width').value = currentDimensions.width;
+            document.getElementById('inp_depth').value = currentDimensions.depth;
+            document.getElementById('inp_height').value = currentDimensions.height;
+            
+            // Build dynamic options
+            buildDynamicOptions();
+            
+            // Open Panel
+            document.querySelectorAll('.item-gallery').forEach(g => g.classList.remove('visible'));
+            document.querySelectorAll('.nav-pill').forEach(p => p.classList.remove('active'));
+            document.getElementById('edit-panel').classList.add('open');
+        }
+
+        function buildDynamicOptions() {
+            const container = document.getElementById('dynamic-options');
+            container.innerHTML = '';
+            
+            Object.keys(currentSelections).forEach(key => {
+                const btn = document.createElement('button');
+                btn.id = 'btn_opt_' + key.toLowerCase().replace(/\s+/g, '_');
+                btn.className = 'finish-category-btn';
+                btn.onclick = () => openFinishOverlay(key);
+                btn.innerHTML = `
+                    <div style="text-align:left">
+                        <span style="font-size:0.6rem; opacity:0.6; display:block">${key.toUpperCase()}</span>
+                        <span id="label_${btn.id}">${currentSelections[key]}</span>
+                    </div>
+                    <span style="font-size:1.2rem">›</span>
+                `;
+                container.appendChild(btn);
+            });
+        }
+
+        function openFinishOverlay(key) {
+            const grid = document.getElementById('finish_grid');
+            grid.innerHTML = '';
+            document.getElementById('finish_title').innerText = key;
+            
+            FINISH_DATA[key].forEach((opt, idx) => {
+                const card = document.createElement('div');
+                card.id = `finish_card_${idx}`;
+                card.className = 'product-card';
+                if(currentSelections[key] === opt.name) card.style.borderColor = 'var(--accent)';
+                
+                card.onclick = () => {
+                    currentSelections[key] = opt.name;
+                    closeFinishOverlay();
+                    buildDynamicOptions();
+                };
+                
+                card.innerHTML = `
+                    <div style="width:40px; height:40px; border-radius:50%; background:${opt.color}; margin:0 auto 10px; border:2px solid white"></div>
+                    <h5>${opt.name}</h5>
+                    <span style="font-size:0.75rem; opacity:0.6">${opt.extra > 0 ? '+R'+opt.extra : 'Standard'}</span>
+                `;
+                grid.appendChild(card);
+            });
+            
+            document.getElementById('finish-overlay').classList.add('open');
+        }
+
+        function closeFinishOverlay() {
+            document.getElementById('finish-overlay').classList.remove('open');
+        }
+
+        // Logic for Adding/Removing
+        function applyAndAdd() {
+            const newItem = {
+                id: Date.now(),
+                name: currentItemContext.name,
+                cat: currentItemContext.cat,
+                basePrice: currentItemContext.basePrice,
+                dimensions: { ...currentDimensions },
+                defaults: { ...defaultDimensions },
+                selections: { ...currentSelections },
+                placement: currentSnap
+            };
+            
+            selectedItems.push(newItem);
+            updateTotalPrice();
+            closeEditMenu();
+            updateCartVisibility();
+            
+            // Notification or visual cue
+            console.log("Added to scene:", newItem);
+        }
+
+        function calculateItemPrice(item) {
+            let base = item.basePrice;
+            const currentTotal = item.dimensions.width + item.dimensions.depth + item.dimensions.height;
+            const defaultTotal = item.defaults.width + item.defaults.depth + item.defaults.height;
+            let scaleDiff = currentTotal - defaultTotal;
+            
+            let dimensionPremium = 0;
+            if (scaleDiff > 0) dimensionPremium = (scaleDiff / 100) * (base * 0.05);
+            else if (scaleDiff < 0) dimensionPremium = (scaleDiff / 100) * (base * 0.02);
+            
+            let finishExtra = 0;
+            Object.keys(item.selections).forEach(k => {
+                const options = FINISH_DATA[k];
+                if (options) {
+                    const option = options.find(o => o.name === item.selections[k]);
+                    if (option) finishExtra += option.extra;
+                }
+            });
+            return Math.max(base * 0.5, base + dimensionPremium + finishExtra);
+        }
+
+        function updateTotalPrice() {
+            currentTotalPrice = selectedItems.reduce((acc, item) => acc + calculateItemPrice(item), 0);
+            const display = 'R' + currentTotalPrice.toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('price_display').innerText = display;
+            document.getElementById('checkout_total').innerText = display;
+        }
+
+        function updateCartVisibility() {
+            // Show/Hide items in the cart panel list based on if they exist in the scene
+            const cartItems = document.querySelectorAll('.cart-item');
+            cartItems.forEach(el => el.style.display = 'none');
+            
+            selectedItems.forEach(item => {
+                const idSlug = item.name.toLowerCase().replace(/\s+/g, '_');
+                const el = document.getElementById('cart_item_' + idSlug);
+                if (el) {
+                    el.style.display = 'flex';
+                    const priceEl = document.getElementById('price_' + idSlug);
+                    if(priceEl) priceEl.innerText = 'R' + calculateItemPrice(item).toLocaleString();
+                }
+            });
+        }
+
+        function removeItem(name) {
+            const idx = selectedItems.findIndex(i => i.name === name);
+            if (idx > -1) {
+                selectedItems.splice(idx, 1);
+                updateTotalPrice();
+                updateCartVisibility();
+            }
+        }
+
+        function duplicateItem(name) {
+            const item = selectedItems.find(i => i.name === name);
+            if (item) {
+                const copy = JSON.parse(JSON.stringify(item));
+                copy.id = Date.now();
+                selectedItems.push(copy);
+                updateTotalPrice();
+                updateCartVisibility();
+            }
+        }
+
+        // Checkout logic
+        function openCheckout() {
+            updateTotalPrice();
+            document.getElementById('checkout-overlay').classList.add('open');
+        }
+
+        function closeCheckout() {
+            document.getElementById('checkout-overlay').classList.remove('open');
+        }
+
+        function handlePay() {
+            if (selectedItems.length === 0) {
+                console.log("Cart is empty");
+                return;
+            }
+            console.log("Processing payment for", currentTotalPrice);
+            // Simulate success
+            document.getElementById('checkout_header').innerText = "Processing...";
+            setTimeout(() => {
+                document.getElementById('checkout_header').innerText = "Order Successful!";
+                document.getElementById('btn_final_pay').style.display = 'none';
+            }, 1500);
+        }
+
+        window.onload = function() {
+            console.log("Configurator Initialized");
+            updateTotalPrice();
+        };
+
+    </script>
+</body>
+</html>
